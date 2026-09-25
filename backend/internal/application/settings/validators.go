@@ -294,3 +294,26 @@ func validPaymentSettingToken(value string) bool {
 	}
 	return true
 }
+
+// validateProjectPresetsSpec 校验项目预设 JSON 数组：每项必须有 id 与 name。
+func validateProjectPresetsSpec(value string, key string) error {
+	if len(value) > 256*1024 {
+		return fmt.Errorf("invalid value for %s: JSON exceeds 256 KiB", key)
+	}
+	var presets []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(value)), &presets); err != nil {
+		return fmt.Errorf("invalid value for %s: must be a presets JSON array", key)
+	}
+	if len(presets) > 64 {
+		return fmt.Errorf("invalid value for %s: at most 64 presets", key)
+	}
+	for _, preset := range presets {
+		if strings.TrimSpace(preset.ID) == "" || strings.TrimSpace(preset.Name) == "" {
+			return fmt.Errorf("invalid value for %s: each preset needs id and name", key)
+		}
+	}
+	return nil
+}

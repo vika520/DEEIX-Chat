@@ -404,6 +404,9 @@ var settingSpecs = []settingSpec{
 	{Namespace: "file", Key: "user_embedding_max_dimensions", ValueType: "int", Default: "8192", Description: "用户Embedding最大维度",
 		Validate: integerValue(), Apply: applyField(func(c *config.Config) *int { return &c.UserEmbeddingMaxDimensions }, toInt)},
 
+	// 项目配置预设：管理员维护的固定预设，供新建/编辑项目时套用（JSON 数组）。
+	{Namespace: "project", Key: "presets", ValueType: "string", Default: "[]", Description: "项目配置预设列表（JSON 数组，新建/编辑项目时套用）",
+		Validate: validateProjectPresetsSpec},
 }
 
 var settingSpecIndex = indexSettingSpecs(settingSpecs)

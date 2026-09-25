@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -257,6 +258,26 @@ func (h *Handler) GetMCPPolicy(c *gin.Context) {
 		limit = config.MaxMCPSelectedToolsPerMessage
 	}
 	response.Success(c, MCPPolicyResponse{MaxSelectedToolsPerMessage: limit})
+}
+
+// GetProjectPresets godoc
+// @Summary 查询项目配置预设
+// @Description 返回管理员维护的项目配置预设列表，供新建/编辑项目时套用。
+// @Tags Settings
+// @Produce json
+// @Success 200 {object} response.Envelope
+// @Router /settings/project-presets [get]
+func (h *Handler) GetProjectPresets(c *gin.Context) {
+	values, err := h.service.RuntimeValuesByNamespace(c.Request.Context(), "project")
+	if err != nil {
+		response.InternalError(c)
+		return
+	}
+	raw := strings.TrimSpace(values["presets"])
+	if raw == "" || !json.Valid([]byte(raw)) {
+		raw = "[]"
+	}
+	response.Success(c, gin.H{"presets": json.RawMessage(raw)})
 }
 
 // GetChatContextPolicy godoc
