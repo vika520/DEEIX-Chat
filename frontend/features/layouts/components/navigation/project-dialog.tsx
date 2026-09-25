@@ -17,6 +17,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -30,6 +37,7 @@ import { getMCPPolicy } from "@/shared/api/settings";
 import { listVisibleSkills } from "@/shared/api/skills";
 import type { SkillSummaryDTO } from "@/shared/api/skills.types";
 import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
+import type { ConversationProjectDTO } from "@/shared/api/conversation.types";
 import { ModelSelect, type ModelSelectOption } from "@/shared/components/model-select";
 import { useDialogSnapshot } from "@/shared/hooks/use-dialog-snapshot";
 import { useFeaturePolicy } from "@/shared/hooks/use-feature-policy";
@@ -238,11 +246,14 @@ export function ProjectDialog({
   setDraft,
   onOpenChange,
   onSubmit,
+  presetProjects = [],
 }: {
   draft: ProjectDraft | null;
   setDraft: React.Dispatch<React.SetStateAction<ProjectDraft | null>>;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => void | Promise<void>;
+  /** 可作为配置预设套用的现有项目列表。 */
+  presetProjects?: ConversationProjectDTO[];
 }) {
   const t = useTranslations("recent.projects");
   const { knowledgeBaseEnabled } = useFeaturePolicy();
@@ -257,6 +268,7 @@ export function ProjectDialog({
   const nameInputID = React.useId();
   const systemPromptInputID = React.useId();
   const defaultModelInputID = React.useId();
+  const presetInputID = React.useId();
   const dialogContentRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -447,6 +459,38 @@ export function ProjectDialog({
 
   const inheritGlobalMCPDefaults = (stableDraft?.mcpDefaultMode ?? "inherit") === "inherit";
 
+  // 预设来源：现有项目（编辑模式下排除自身，避免自套）。
+  const presetOptions = React.useMemo(
+    () => presetProjects.filter((item) => item.publicID !== stableDraft?.publicID),
+    [presetProjects, stableDraft?.publicID],
+  );
+
+  const applyPreset = React.useCallback(
+    (publicID: string) => {
+      const preset = presetProjects.find((item) => item.publicID === publicID);
+      if (!preset) {
+        return;
+      }
+      setDraft((current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          // 名称不套用：新建时留空强制起名，编辑时保留现名。
+          name: current.publicID ? current.name : "",
+          systemPrompt: preset.systemPrompt ?? "",
+          defaultModel: preset.defaultModel ?? "",
+          mcpDefaultMode: preset.mcpDefaultMode === "custom" ? "custom" : "inherit",
+          defaultMCPToolIDs: (preset.defaultMCPToolIDs ?? []).slice(),
+          defaultSkillIDs: (preset.defaultSkillIDs ?? []).slice(),
+          defaultKnowledgeBaseIDs: (preset.defaultKnowledgeBaseIDs ?? []).slice(),
+        };
+      });
+    },
+    [presetProjects, setDraft],
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -460,6 +504,32 @@ export function ProjectDialog({
 
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-2">
+            {presetOptions.length > 0 ? (
+              <div className="space-y-1">
+                <span className="text-xs text-muted-foreground">{t("presetLabel")}</span>
+                <Select
+                  value=""
+                  onValueChange={(value) => {
+                    if (value) {
+                      applyPreset(value);
+                    }
+                  }}
+                  disabled={submitting}
+                >
+                  <SelectTrigger id={presetInputID} className="h-8 w-full">
+                    <SelectValue placeholder={t("presetPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {presetOptions.map((item) => (
+                      <SelectItem key={item.publicID} value={item.publicID}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">{t("presetHint")}</p>
+              </div>
+            ) : null}
             <div className="space-y-1">
               <label htmlFor={nameInputID} className="text-xs text-muted-foreground">
                 {t("nameLabel")}

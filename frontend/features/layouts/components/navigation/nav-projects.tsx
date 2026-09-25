@@ -972,7 +972,13 @@ export function NavProjects() {
         </Collapsible>
       </div>
 
-      <ProjectDialog draft={draft} setDraft={setDraft} onOpenChange={(open) => !open && closeDraft()} onSubmit={commitDraft} />
+      <ProjectDialog
+        draft={draft}
+        setDraft={setDraft}
+        onOpenChange={(open) => !open && closeDraft()}
+        onSubmit={commitDraft}
+        presetProjects={projects}
+      />
 
       <AlertDialog
         open={Boolean(deleteTarget)}
