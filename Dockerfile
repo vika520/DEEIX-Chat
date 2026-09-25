@@ -44,6 +44,11 @@ FROM golang:1.26.8-bookworm AS backend-builder
 
 WORKDIR /src/backend
 
+# 本机无法访问 proxy.golang.org（实测连接超时），改用国内可用的 Go 模块代理。
+# GOSUMDB 关闭后仍会按 go.sum 校验已锁定依赖的哈希。
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GOSUMDB=off
+
 ARG GIT_COMMIT=unknown
 ARG BUILD_TIME=""
 COPY VERSION /src/VERSION
