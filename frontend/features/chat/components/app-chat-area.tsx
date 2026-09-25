@@ -25,7 +25,7 @@ import { ChatArea, ChatAreaLoadError, ChatAreaSkeleton } from "@/features/chat/c
 import { ChatArtifactWorkspace } from "@/features/chat/components/sections/chat-artifact";
 import { ChatEmptyState } from "@/features/chat/components/sections/chat-empty";
 import { ChatInput } from "@/features/chat/components/sections/chat-input";
-import { ChatProjectWorkspace, collectProjectFileChanges, type ProjectChange, ProjectFileEditor, type ProjectFileTab, type ProjectWorkspaceHandle, reconstructProjectFileInitial } from "@/features/chat/components/sections/chat-project-workspace";
+import { ChatProjectWorkspace, collectProjectFileChanges, isBinaryAssetPath, type ProjectChange, ProjectFileEditor, type ProjectFileTab, type ProjectWorkspaceHandle, reconstructProjectFileInitial } from "@/features/chat/components/sections/chat-project-workspace";
 import { ChatScreenshotPreviewDialog } from "@/features/chat/components/sections/chat-screenshot-preview-dialog";
 import { TemporaryChatModeControl } from "@/features/chat/components/temporary-chat-mode-control";
 import { useChatSession } from "@/features/chat/context/chat-session-context";
@@ -750,12 +750,15 @@ export function AppChatArea() {
     try {
       const token = await resolveAccessToken();
       if (!token) throw new Error("登录状态已失效");
-      const content = await fetchProjectFileContent(token, workspaceProjectID, file.PublicID);
+      // 图片/字体等二进制文件不拉文本：编辑器会走只读预览分支。
+      const binaryFile = isBinaryAssetPath(file.RelativePath);
+      const content = binaryFile ? "" : await fetchProjectFileContent(token, workspaceProjectID, file.PublicID);
+      const note = binaryFile ? "二进制文件 · 只读预览" : "";
       setProjectFileTabs((previous) => {
         const existing = previous.find((item) => item.key === file.RelativePath);
         const tab: ProjectFileTab = existing
-          ? { ...existing, fileID: file.PublicID, content, savedContent: content, diff: existing.diff ? { ...existing.diff, next: content } : null, note: "", deleted: false }
-          : { key: file.RelativePath, path: file.RelativePath, fileID: file.PublicID, content, savedContent: content, diff: null, note: "", deleted: false };
+          ? { ...existing, fileID: file.PublicID, content, savedContent: content, diff: existing.diff ? { ...existing.diff, next: content } : null, note, deleted: false }
+          : { key: file.RelativePath, path: file.RelativePath, fileID: file.PublicID, content, savedContent: content, diff: null, note, deleted: false };
         return upsertIn(previous, tab);
       });
       setActiveProjectTabKey(file.RelativePath);

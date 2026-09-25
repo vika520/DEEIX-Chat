@@ -392,8 +392,14 @@ function resolveWorkspacePath(baseDir: string, ref: string): string {
 
 const BINARY_ASSET_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico", "woff", "woff2", "ttf", "otf", "eot"]);
 
-function isBinaryAssetPath(path: string): boolean {
+export function isBinaryAssetPath(path: string): boolean {
   return BINARY_ASSET_EXTENSIONS.has(path.split(".").pop()?.toLowerCase() ?? "");
+}
+
+const IMAGE_PREVIEW_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico"]);
+
+function isImageFilePath(path: string): boolean {
+  return IMAGE_PREVIEW_EXTENSIONS.has(path.split(".").pop()?.toLowerCase() ?? "");
 }
 
 async function blobToDataUrl(blob: Blob): Promise<string> {
@@ -445,7 +451,11 @@ export function ProjectFileEditor({ tab, busy, projectID, onPathChange, onConten
 }) {
   const readOnly = Boolean(tab.diff) || tab.deleted;
   const previewable = isPreviewableFile(tab.path);
+  const binaryFile = isBinaryAssetPath(tab.path);
+  const imageFile = isImageFilePath(tab.path);
   const [view, setView] = React.useState<"code" | "preview">("code");
+  const [imagePreviewUrl, setImagePreviewUrl] = React.useState("");
+  const [imagePreviewFailed, setImagePreviewFailed] = React.useState(false);
   const [previewDoc, setPreviewDoc] = React.useState("");
   const [previewMissing, setPreviewMissing] = React.useState<string[]>([]);
   // 资源缓存：避免每次内容变更都重新拉取工作区文件。
@@ -568,6 +578,21 @@ export function ProjectFileEditor({ tab, busy, projectID, onPathChange, onConten
     return { doc, missing };
   }, [fetchWorkspaceDataUrl, fetchWorkspaceText, inlineCss]);
 
+  // 图片文件：内容是二进制，读取 data URL 做只读预览（复用 HTML 预览的资源缓存）。
+  React.useEffect(() => {
+    setImagePreviewUrl("");
+    setImagePreviewFailed(false);
+    if (!imageFile) return;
+    let cancelled = false;
+    void fetchWorkspaceDataUrl(tab.path).then((url) => {
+      if (cancelled) return;
+      if (url) setImagePreviewUrl(url);
+      else setImagePreviewFailed(true);
+    });
+    return () => { cancelled = true; };
+  }, [tab.key, tab.path, imageFile, fetchWorkspaceDataUrl]);
+
+
   // 预览视图下内容变更时防抖重建内联文档（资源已缓存，重建为本地字符串操作）。
   React.useEffect(() => {
     if (view !== "preview") return;
@@ -608,11 +633,25 @@ export function ProjectFileEditor({ tab, busy, projectID, onPathChange, onConten
             {view === "code" ? <Eye /> : <Code2 />}
           </Button>
         ) : null}
-        <Button variant="ghost" size="icon-sm" title="保存" disabled={busy || readOnly || !tab.path.trim() || (Boolean(tab.fileID) && tab.content === tab.savedContent)} onClick={onSave}><Save /></Button>
+        {binaryFile ? null : (
+          <Button variant="ghost" size="icon-sm" title="保存" disabled={busy || readOnly || !tab.path.trim() || (Boolean(tab.fileID) && tab.content === tab.savedContent)} onClick={onSave}><Save /></Button>
+        )}
         <Button variant="ghost" size="icon-sm" title={tab.fileID ? "删除文件" : "关闭未保存文件"} disabled={busy} onClick={onDelete}><Trash2 /></Button>
       </div>
       {tab.note ? <div className="shrink-0 border-b bg-muted/50 px-3 py-1.5 text-[11px] text-muted-foreground">{tab.note}</div> : null}
-      {previewable && view === "preview" ? (
+      {binaryFile ? (
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-muted/30 p-3">
+          {imageFile ? (
+            imagePreviewUrl ? (
+              <img src={imagePreviewUrl} alt={tab.path} className="max-h-full max-w-full object-contain" />
+            ) : (
+              <div className="text-xs text-muted-foreground">{imagePreviewFailed ? "图片加载失败（文件可能已被移动或删除）" : "加载中…"}</div>
+            )
+          ) : (
+            <div className="text-xs text-muted-foreground">二进制文件，不支持预览与编辑</div>
+          )}
+        </div>
+      ) : previewable && view === "preview" ? (
         <>
           {previewMissing.length > 0 ? (
             <div className="shrink-0 border-b bg-muted/50 px-3 py-1.5 text-[11px] text-muted-foreground" title={previewMissing.join("\n")}>
