@@ -1,9 +1,9 @@
 "use client";
 
-import { getUserSettings, patchUserSettings } from "@/shared/api/user-settings";
+import { authedRequest } from "@/shared/api/authed-client";
 
-// 项目配置预设：独立于项目实体，存在用户设置里随账号云同步。
-// 删除项目不影响预设；同名保存视为更新。
+// 项目配置预设：管理员维护的系统级固定预设（平台设置 project:presets，JSON 数组）。
+// 普通用户只读，套用时仅填充表单草稿；删除项目不影响预设。
 export type ProjectPreset = {
   id: string;
   name: string;
@@ -17,25 +17,30 @@ export type ProjectPreset = {
   createdAt: number;
 };
 
-export const PROJECT_PRESETS_SETTINGS_KEY = "project.presets.v1";
+type PresetsPayload = { presets?: ProjectPreset[] };
 
 export async function loadProjectPresets(accessToken: string): Promise<ProjectPreset[]> {
-  const settings = (await getUserSettings(accessToken).catch(() => ({}))) as Record<string, unknown>;
-  const raw = settings[PROJECT_PRESETS_SETTINGS_KEY];
-  if (!raw) return [];
-  try {
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-    return Array.isArray(parsed) ? (parsed as ProjectPreset[]) : [];
-  } catch {
-    return [];
-  }
+  const data = await authedRequest<PresetsPayload | null>(
+    "/api/v1/settings/project-presets",
+    { accessToken },
+    true,
+  ).catch(() => null);
+  return Array.isArray(data?.presets) ? data.presets : [];
 }
 
+// 仅管理员可写（走 /admin/settings；普通用户调用会得到 403）。
 export async function saveProjectPresets(accessToken: string, presets: ProjectPreset[]): Promise<void> {
-  const body = { [PROJECT_PRESETS_SETTINGS_KEY]: JSON.stringify(presets) } as Parameters<
-    typeof patchUserSettings
-  >[1];
-  await patchUserSettings(accessToken, body);
+  await authedRequest(
+    "/api/v1/admin/settings",
+    {
+      accessToken,
+      method: "PATCH",
+      body: JSON.stringify({
+        items: [{ namespace: "project", key: "presets", value: JSON.stringify(presets) }],
+      }),
+    },
+    true,
+  );
 }
 
 export function newProjectPresetID(): string {
