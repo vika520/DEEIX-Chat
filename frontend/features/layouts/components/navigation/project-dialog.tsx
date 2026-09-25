@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Box, ChevronDown, Globe2, type LucideIcon, Search, Wrench } from "lucide-react";
+import { BookOpen, BookmarkPlus, Box, ChevronDown, Globe2, type LucideIcon, Search, Trash2, Wrench } from "lucide-react";
 import { useTranslations } from "next-intl";
 import * as React from "react";
 import { toast } from "sonner";
@@ -38,6 +38,12 @@ import { listVisibleSkills } from "@/shared/api/skills";
 import type { SkillSummaryDTO } from "@/shared/api/skills.types";
 import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
 import type { ConversationProjectDTO } from "@/shared/api/conversation.types";
+import {
+  loadProjectPresets,
+  newProjectPresetID,
+  saveProjectPresets,
+  type ProjectPreset,
+} from "@/shared/model/project-presets";
 import { ModelSelect, type ModelSelectOption } from "@/shared/components/model-select";
 import { useDialogSnapshot } from "@/shared/hooks/use-dialog-snapshot";
 import { useFeaturePolicy } from "@/shared/hooks/use-feature-policy";
@@ -263,6 +269,9 @@ export function ProjectDialog({
   const [mcpTools, setMCPTools] = React.useState<MCPToolDTO[]>([]);
   const [models, setModels] = React.useState<PublicModelDTO[]>([]);
   const [selectionLimit, setSelectionLimit] = React.useState(1);
+  const [savedPresets, setSavedPresets] = React.useState<ProjectPreset[]>([]);
+  const [selectedSavedPresetID, setSelectedSavedPresetID] = React.useState("");
+  const [presetsLoading, setPresetsLoading] = React.useState(false);
   const stableDraft = useDialogSnapshot(draft);
   const open = Boolean(draft);
   const nameInputID = React.useId();
@@ -276,6 +285,32 @@ export function ProjectDialog({
       setSubmitting(false);
     }
   }, [draft]);
+
+  // 打开对话框时加载已保存的预设（用户设置云同步，删项目不影响）。
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setPresetsLoading(true);
+    void (async () => {
+      try {
+        const token = await resolveAccessToken();
+        if (!token) throw new Error("missing access token");
+        const list = await loadProjectPresets(token);
+        if (!cancelled) {
+          setSavedPresets(list);
+          setSelectedSavedPresetID("");
+        }
+      } catch {
+        if (!cancelled) {
+          setSavedPresets([]);
+          toast.error(t("presetLoadFailed"));
+        }
+      } finally {
+        if (!cancelled) setPresetsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, t]);
 
   React.useEffect(() => {
     if (!open) {
@@ -459,6 +494,91 @@ export function ProjectDialog({
 
   const inheritGlobalMCPDefaults = (stableDraft?.mcpDefaultMode ?? "inherit") === "inherit";
 
+  // 套用已保存的预设（只填草稿不落库；名称不被覆盖）。
+  const applySavedPreset = React.useCallback(
+    (id: string) => {
+      setSelectedSavedPresetID(id);
+      const preset = savedPresets.find((item) => item.id === id);
+      if (!preset) {
+        return;
+      }
+      setDraft((current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          name: current.publicID ? current.name : "",
+          systemPrompt: preset.systemPrompt ?? "",
+          defaultModel: preset.defaultModel ?? "",
+          mcpDefaultMode: preset.mcpDefaultMode === "custom" ? "custom" : "inherit",
+          defaultMCPToolIDs: (preset.defaultMCPToolIDs ?? []).slice(),
+          defaultSkillIDs: (preset.defaultSkillIDs ?? []).slice(),
+          defaultKnowledgeBaseIDs: (preset.defaultKnowledgeBaseIDs ?? []).slice(),
+        };
+      });
+    },
+    [savedPresets, setDraft],
+  );
+
+  // 把当前表单配置存为预设（同名覆盖更新）；新建模式要求先起名。
+  const saveCurrentAsPreset = React.useCallback(async () => {
+    const current = stableDraft;
+    if (!current) {
+      return;
+    }
+    const name = current.name.trim();
+    if (!name) {
+      toast.error(t("presetSaveNeedsName"));
+      return;
+    }
+    const token = await resolveAccessToken();
+    if (!token) {
+      return;
+    }
+    const preset: ProjectPreset = {
+      id: newProjectPresetID(),
+      name,
+      description: "",
+      systemPrompt: current.systemPrompt ?? "",
+      defaultModel: current.defaultModel ?? "",
+      mcpDefaultMode: current.mcpDefaultMode === "custom" ? "custom" : "inherit",
+      defaultMCPToolIDs: (current.defaultMCPToolIDs ?? []).slice(),
+      defaultSkillIDs: (current.defaultSkillIDs ?? []).slice(),
+      defaultKnowledgeBaseIDs: (current.defaultKnowledgeBaseIDs ?? []).slice(),
+      createdAt: Date.now(),
+    };
+    const next = [...savedPresets.filter((item) => item.name !== name), preset];
+    try {
+      await saveProjectPresets(token, next);
+      setSavedPresets(next);
+      setSelectedSavedPresetID(preset.id);
+      toast.success(t("presetSaved"));
+    } catch {
+      toast.error(t("presetLoadFailed"));
+    }
+  }, [stableDraft, savedPresets, t]);
+
+  // 删除选中的预设（只影响预设，不动任何项目）。
+  const deleteSavedPreset = React.useCallback(async () => {
+    if (!selectedSavedPresetID) {
+      return;
+    }
+    const token = await resolveAccessToken();
+    if (!token) {
+      return;
+    }
+    const next = savedPresets.filter((item) => item.id !== selectedSavedPresetID);
+    try {
+      await saveProjectPresets(token, next);
+      setSavedPresets(next);
+      setSelectedSavedPresetID("");
+      toast.success(t("presetDeleted"));
+    } catch {
+      toast.error(t("presetLoadFailed"));
+    }
+  }, [savedPresets, selectedSavedPresetID, t]);
+
   // 预设来源：现有项目（编辑模式下排除自身，避免自套）。
   const presetOptions = React.useMemo(
     () => presetProjects.filter((item) => item.publicID !== stableDraft?.publicID),
@@ -504,6 +624,48 @@ export function ProjectDialog({
 
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-2">
+            <div className="space-y-1">
+              <span className="text-xs text-muted-foreground">{t("myPresetsLabel")}</span>
+              <div className="flex gap-2">
+                <Select
+                  value={selectedSavedPresetID}
+                  onValueChange={applySavedPreset}
+                  disabled={submitting || presetsLoading}
+                >
+                  <SelectTrigger className="h-8 flex-1">
+                    <SelectValue placeholder={presetsLoading ? t("presetLoading") : t("myPresetsPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savedPresets.map((preset) => (
+                      <SelectItem key={preset.id} value={preset.id}>
+                        {preset.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  title={t("deletePreset")}
+                  disabled={submitting || !selectedSavedPresetID}
+                  onClick={() => void deleteSavedPreset()}
+                >
+                  <Trash2 />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  title={t("savePreset")}
+                  disabled={submitting}
+                  onClick={() => void saveCurrentAsPreset()}
+                >
+                  <BookmarkPlus />
+                </Button>
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">{t("myPresetsHint")}</p>
+            </div>
             {presetOptions.length > 0 ? (
               <div className="space-y-1">
                 <span className="text-xs text-muted-foreground">{t("presetLabel")}</span>
