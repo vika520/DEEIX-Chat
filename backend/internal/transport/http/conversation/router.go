@@ -11,6 +11,7 @@ func (m *Module) RegisterRoutes(authRequired *gin.RouterGroup) {
 	authRequired.GET("/conversations/default-model-candidate", m.Handler.GetConversationDefaultModelCandidate)
 	authRequired.GET("/conversation-projects", m.Handler.ListConversationProjects)
 	authRequired.POST("/conversation-projects", m.Handler.CreateConversationProject)
+	authRequired.PATCH("/conversation-projects/:id", m.Handler.UpdateConversationProject)
 	authRequired.GET("/conversation-projects/:id/workspace", m.Handler.GetProjectWorkspace)
 	authRequired.GET("/conversation-projects/:id/files", m.Handler.ListProjectFiles)
 	authRequired.PUT("/conversation-projects/:id/files", m.Handler.WriteProjectFile)
