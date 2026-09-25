@@ -35,6 +35,7 @@ var allowedKeys = map[string]string{
 	"chat.content_width":                        "compact",
 	"chat.default_mcp_tool_ids":                 "[]",
 	"canvas.state_v1":                           "{}",
+	"project.presets.v1":                       "[]",
 }
 
 // boolKeys 取值只能是 "true" / "false"。
@@ -69,6 +70,9 @@ func validateValue(key, value string) error {
 	if key == "canvas.state_v1" {
 		return validateCanvasState(value, key)
 	}
+	if key == "project.presets.v1" {
+		return validateProjectPresets(value, key)
+	}
 	if key == "chat.default_mcp_tool_ids" {
 		return validateDefaultMCPToolIDs(value, key)
 	}
@@ -84,6 +88,29 @@ func validateValue(key, value string) error {
 				valid = append(valid, "'"+v+"'")
 			}
 			return settingValidationError(ErrInvalidSettingValue, fmt.Sprintf("invalid value for %s: must be one of %s", key, strings.Join(valid, ", ")))
+		}
+	}
+	return nil
+}
+
+// validateProjectPresets 校验项目预设 JSON 数组：每项必须有 id 与 name。
+func validateProjectPresets(value, key string) error {
+	if len(value) > 256*1024 {
+		return settingValidationError(ErrInvalidSettingValue, fmt.Sprintf("invalid value for %s: JSON exceeds 256 KiB", key))
+	}
+	var presets []struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimSpace(value)), &presets); err != nil {
+		return settingValidationError(ErrInvalidSettingValue, fmt.Sprintf("invalid value for %s: must be a presets JSON array", key))
+	}
+	if len(presets) > 64 {
+		return settingValidationError(ErrInvalidSettingValue, fmt.Sprintf("invalid value for %s: at most 64 presets", key))
+	}
+	for _, preset := range presets {
+		if strings.TrimSpace(preset.ID) == "" || strings.TrimSpace(preset.Name) == "" {
+			return settingValidationError(ErrInvalidSettingValue, fmt.Sprintf("invalid value for %s: each preset needs id and name", key))
 		}
 	}
 	return nil
