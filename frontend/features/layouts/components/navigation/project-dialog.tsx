@@ -269,6 +269,7 @@ export function ProjectDialog({
   const [savedPresets, setSavedPresets] = React.useState<ProjectPreset[]>([]);
   const [selectedSavedPresetID, setSelectedSavedPresetID] = React.useState("");
   const [presetsLoading, setPresetsLoading] = React.useState(false);
+  const [deleteArmed, setDeleteArmed] = React.useState(false);
   const stableDraft = useDialogSnapshot(draft);
   const open = Boolean(draft);
   const nameInputID = React.useId();
@@ -295,6 +296,7 @@ export function ProjectDialog({
         if (!cancelled) {
           setSavedPresets(list);
           setSelectedSavedPresetID("");
+          setDeleteArmed(false);
         }
       } catch {
         if (!cancelled) {
@@ -494,6 +496,7 @@ export function ProjectDialog({
   const applySavedPreset = React.useCallback(
     (id: string) => {
       setSelectedSavedPresetID(id);
+      setDeleteArmed(false);
       const preset = savedPresets.find((item) => item.id === id);
       if (!preset) {
         return;
@@ -612,9 +615,17 @@ export function ProjectDialog({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  title={t("deletePreset")}
+                  title={deleteArmed ? t("deletePresetConfirm") : t("deletePreset")}
+                  className={cn(deleteArmed && "text-destructive")}
                   disabled={submitting || !selectedSavedPresetID}
-                  onClick={() => void deleteSavedPreset()}
+                  onClick={() => {
+                    if (!deleteArmed) {
+                      setDeleteArmed(true);
+                      return;
+                    }
+                    setDeleteArmed(false);
+                    void deleteSavedPreset();
+                  }}
                 >
                   <Trash2 />
                 </Button>
