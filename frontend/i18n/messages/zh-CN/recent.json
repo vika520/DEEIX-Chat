@@ -93,7 +93,10 @@
     "deleteConversationsDescription": "勾选后会同时删除项目下的会话；不勾选则移动到默认。",
     "cancel": "取消",
     "save": "保存",
-    "deletePresetConfirm": "再点一次确认删除该预设"
+    "deletePresetConfirm": "再点一次确认删除该预设",
+    "presetDropdownLabel": "预设",
+    "presetDropdownPlaceholder": "选择预设（内置或已保存）…",
+    "systemPresetsHint": "「内置」为系统固定预设，随应用部署、不可删除；自定义预设由管理员保存维护。套用只填充表单，名称不会被覆盖。"
   },
   "select": "选择",
   "selectedCount": "{count} 个会话被选中",

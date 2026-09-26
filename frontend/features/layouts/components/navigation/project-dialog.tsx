@@ -38,9 +38,12 @@ import { listVisibleSkills } from "@/shared/api/skills";
 import type { SkillSummaryDTO } from "@/shared/api/skills.types";
 import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
 import {
+  BUILTIN_PROJECT_PRESETS,
+  isBuiltinPresetID,
   loadProjectPresets,
   newProjectPresetID,
   saveProjectPresets,
+  type BuiltinProjectPreset,
   type ProjectPreset,
 } from "@/shared/model/project-presets";
 import { ModelSelect, type ModelSelectOption } from "@/shared/components/model-select";
@@ -490,6 +493,42 @@ export function ProjectDialog({
     [draft?.name, onSubmit, submitting],
   );
 
+  // 可套用的全部预设：系统内置（固定）在前 + 管理员保存的自定义预设。
+  const allPresets = React.useMemo<
+    Array<{
+      id: string;
+      name: string;
+      description: string;
+      systemPrompt: string;
+      defaultModel: string;
+      mcpDefaultMode: "inherit" | "custom";
+      defaultMCPToolIDs: number[];
+      defaultSkillIDs: number[];
+      defaultKnowledgeBaseIDs: string[];
+      builtin: boolean;
+      defaultMCPToolNames?: string[];
+      defaultSkillTitles?: string[];
+    }>
+  >(
+    () => [
+      ...BUILTIN_PROJECT_PRESETS.map((b) => ({
+        id: b.id,
+        name: b.name,
+        description: b.description,
+        systemPrompt: b.systemPrompt,
+        defaultModel: b.defaultModel,
+        mcpDefaultMode: "custom" as const,
+        defaultMCPToolIDs: [] as number[],
+        defaultSkillIDs: [] as number[],
+        defaultKnowledgeBaseIDs: [] as string[],
+        builtin: true,
+        defaultMCPToolNames: b.defaultMCPToolNames,
+        defaultSkillTitles: b.defaultSkillTitles,
+      })),
+      ...savedPresets.map((preset) => ({ ...preset, builtin: false })),
+    ],
+    [savedPresets],
+  );
   const inheritGlobalMCPDefaults = (stableDraft?.mcpDefaultMode ?? "inherit") === "inherit";
 
   // 套用已保存的预设（只填草稿不落库；名称不被覆盖）。
@@ -497,10 +536,18 @@ export function ProjectDialog({
     (id: string) => {
       setSelectedSavedPresetID(id);
       setDeleteArmed(false);
-      const preset = savedPresets.find((item) => item.id === id);
+      const preset = allPresets.find((item) => item.id === id);
       if (!preset) {
         return;
       }
+      const toolIDByName = new Map(mcpTools.map((tool) => [tool.name, tool.id]));
+      const skillIDByTitle = new Map(skillCatalog.items.map((skill) => [skill.title, skill.id]));
+      const toolIDs = (preset.defaultMCPToolNames ?? [])
+        .map((name) => toolIDByName.get(name))
+        .filter((value): value is number => typeof value === "number");
+      const skillIDs = (preset.defaultSkillTitles ?? [])
+        .map((title) => skillIDByTitle.get(title))
+        .filter((value): value is number => typeof value === "number");
       setDraft((current) => {
         if (!current) {
           return current;
@@ -510,14 +557,14 @@ export function ProjectDialog({
           name: current.publicID ? current.name : "",
           systemPrompt: preset.systemPrompt ?? "",
           defaultModel: preset.defaultModel ?? "",
-          mcpDefaultMode: preset.mcpDefaultMode === "custom" ? "custom" : "inherit",
-          defaultMCPToolIDs: (preset.defaultMCPToolIDs ?? []).slice(),
-          defaultSkillIDs: (preset.defaultSkillIDs ?? []).slice(),
+          mcpDefaultMode: toolIDs.length > 0 ? "custom" : "inherit",
+          defaultMCPToolIDs: toolIDs,
+          defaultSkillIDs: skillIDs,
           defaultKnowledgeBaseIDs: (preset.defaultKnowledgeBaseIDs ?? []).slice(),
         };
       });
     },
-    [savedPresets, setDraft],
+    [allPresets, mcpTools, skillCatalog, setDraft],
   );
 
   // 把当前表单配置存为预设（同名覆盖更新）；新建模式要求先起名。
@@ -593,7 +640,7 @@ export function ProjectDialog({
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-2">
             <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">{t("myPresetsLabel")}</span>
+              <span className="text-xs text-muted-foreground">{t("presetDropdownLabel")}</span>
               <div className="flex gap-2">
                 <Select
                   value={selectedSavedPresetID}
@@ -601,12 +648,13 @@ export function ProjectDialog({
                   disabled={submitting || presetsLoading}
                 >
                   <SelectTrigger className="h-8 flex-1">
-                    <SelectValue placeholder={presetsLoading ? t("presetLoading") : t("myPresetsPlaceholder")} />
+                    <SelectValue placeholder={presetsLoading ? t("presetLoading") : t("presetDropdownPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {savedPresets.map((preset) => (
+                    {allPresets.map((preset) => (
                       <SelectItem key={preset.id} value={preset.id}>
                         {preset.name}
+                        {preset.builtin ? "（内置）" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -617,7 +665,7 @@ export function ProjectDialog({
                   size="icon-sm"
                   title={deleteArmed ? t("deletePresetConfirm") : t("deletePreset")}
                   className={cn(deleteArmed && "text-destructive")}
-                  disabled={submitting || !selectedSavedPresetID}
+                  disabled={submitting || !selectedSavedPresetID || isBuiltinPresetID(selectedSavedPresetID)}
                   onClick={() => {
                     if (!deleteArmed) {
                       setDeleteArmed(true);
@@ -640,7 +688,7 @@ export function ProjectDialog({
                   <BookmarkPlus />
                 </Button>
               </div>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">{t("myPresetsHint")}</p>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">{t("systemPresetsHint")}</p>
             </div>
             <div className="space-y-1">
               <label htmlFor={nameInputID} className="text-xs text-muted-foreground">

@@ -93,7 +93,10 @@
     "deleteConversationsDescription": "When selected, conversations in this project are also deleted; otherwise they move to Default.",
     "cancel": "Cancel",
     "save": "Save",
-    "deletePresetConfirm": "Click again to confirm deletion"
+    "deletePresetConfirm": "Click again to confirm deletion",
+    "presetDropdownLabel": "Presets",
+    "presetDropdownPlaceholder": "Choose a preset (built-in or saved)…",
+    "systemPresetsHint": "Built-in presets ship with the app and cannot be deleted; custom presets are maintained by the admin. Applying only fills the form; the name is never overwritten."
   },
   "select": "Select",
   "selectedCount": "{count} conversations selected",
