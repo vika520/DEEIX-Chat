@@ -123,8 +123,11 @@ func (s *Service) executeAssistantToolCalls(ctx context.Context, input executeAs
 			continue
 		}
 		// 服务器归属快照跟随每一行落库，错误行也保留归属，便于按服务器排查与统计。
-		row.MCPServerID = binding.ServerID
-		row.MCPServerName = binding.ServerName
+		// 项目内置工具（isProjectTool）没有 MCP binding，此处必须判空，否则空指针 panic。
+		if binding != nil {
+			row.MCPServerID = binding.ServerID
+			row.MCPServerName = binding.ServerName
+		}
 
 		normalizedInput, validationErr := normalizeToolArguments(row.InputJSON, input.ToolSchemas[modelToolName])
 		if validationErr != nil {
