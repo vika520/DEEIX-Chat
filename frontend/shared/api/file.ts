@@ -197,6 +197,31 @@ export async function updateFileRagOptOut(
   );
 }
 
+// 批量打包下载：把选中的文件打包为 ZIP。
+export async function bulkArchiveFiles(
+  accessToken: string,
+  fileIDs: string[],
+): Promise<{ blob: Blob; fileName: string }> {
+  const response = await authedFetch(
+    "/api/v1/files/archive",
+    {
+      method: "POST",
+      accessToken,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileIDs }),
+    },
+    true,
+  );
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(message || `HTTP ${response.status}`);
+  }
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  const blob = await response.blob();
+  return { blob, fileName: match?.[1] ?? "deeix-files.zip" };
+}
+
 export async function fetchFileContent(
   accessToken: string,
   fileID: string,

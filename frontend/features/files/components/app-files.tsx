@@ -42,6 +42,7 @@ export function AppFiles() {
     selectedFileIDs,
     bulkDeleteOpen,
     bulkDeleting,
+    bulkDownloading,
     vectorizing,
     vectorizingFileIDs,
     hasMore,
@@ -79,6 +80,7 @@ export function AppFiles() {
     onSelectLoadedFiles,
     onClearFileSelection,
     onBulkDeleteRequest,
+    onBulkDownloadRequest,
     onClearBulkDelete,
     onConfirmBulkDelete,
     onVectorizeFile,
@@ -123,6 +125,7 @@ export function AppFiles() {
               vectorizableSelectedCount={vectorizableSelectedCount}
               selectAllDisabled={selectAllDisabled}
               bulkDeleteDisabled={bulkDeleting}
+              bulkDownloading={bulkDownloading}
               vectorizing={vectorizing}
               collapsed={sidebarCollapsed}
               showCollapseButton={!isMobileViewport}
@@ -134,6 +137,7 @@ export function AppFiles() {
               onSelectLoaded={onSelectLoadedFiles}
               onClearSelection={onClearFileSelection}
               onBulkDeleteRequest={onBulkDeleteRequest}
+              onBulkDownloadRequest={onBulkDownloadRequest}
               onVectorizeSelected={onVectorizeSelected}
               onUpload={onOpenUploadPicker}
             />

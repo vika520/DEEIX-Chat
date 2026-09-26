@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownUp, Check, DatabaseZap, Funnel, PanelLeftClose, PanelLeftOpen, Plus, Search, SquareDashed, SquareDashedMousePointer, Trash2 } from "lucide-react";
+import { Download, ArrowDownUp, Check, DatabaseZap, Funnel, PanelLeftClose, PanelLeftOpen, Plus, Search, SquareDashed, SquareDashedMousePointer, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ type SidebarHeaderProps = {
   vectorizableSelectedCount: number;
   selectAllDisabled: boolean;
   bulkDeleteDisabled: boolean;
+  bulkDownloading: boolean;
   vectorizing: boolean;
   onToggleCollapsed: () => void;
   onToggleSearch: () => void;
@@ -38,6 +39,7 @@ type SidebarHeaderProps = {
   onSelectLoaded: () => void;
   onClearSelection: () => void;
   onBulkDeleteRequest: () => void;
+  onBulkDownloadRequest: () => Promise<void> | void;
   onVectorizeSelected: () => void;
   onUpload: () => void;
 };
@@ -54,6 +56,7 @@ export function SidebarHeader({
   vectorizableSelectedCount,
   selectAllDisabled,
   bulkDeleteDisabled,
+  bulkDownloading,
   vectorizing,
   showCollapseButton = true,
   onToggleCollapsed,
@@ -64,6 +67,7 @@ export function SidebarHeader({
   onSelectLoaded,
   onClearSelection,
   onBulkDeleteRequest,
+  onBulkDownloadRequest,
   onVectorizeSelected,
   onUpload,
 }: SidebarHeaderProps) {
@@ -242,6 +246,17 @@ export function SidebarHeader({
             </>
           ) : (
             <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 shrink-0 gap-0.5 px-1 text-xs text-muted-foreground shadow-none hover:bg-muted hover:text-foreground"
+                onClick={onBulkDownloadRequest}
+                disabled={bulkDownloading}
+              >
+                <Download className="size-3 stroke-1" />
+                {t("actions.downloadZip")}
+              </Button>
               <Button
                 type="button"
                 variant="ghost"

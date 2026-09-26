@@ -60,6 +60,7 @@ func (m *Module) RegisterRoutes(authRequired *gin.RouterGroup) {
 	authRequired.DELETE("/messages/:id", m.Handler.DeleteMessage)
 	authRequired.PUT("/messages/:id/feedback", m.Handler.SetMessageFeedback)
 	authRequired.POST("/files", m.Handler.UploadFile)
+	authRequired.POST("/files/archive", m.Handler.BulkArchiveFiles)
 	authRequired.GET("/files", m.Handler.ListFiles)
 	authRequired.POST("/files/processing/statuses", m.Handler.GetFileProcessingStatuses)
 	authRequired.POST("/files/embeddings", m.Handler.SubmitFileEmbeddings)

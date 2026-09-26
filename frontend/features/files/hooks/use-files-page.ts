@@ -10,6 +10,8 @@ import { useFilePreview } from "@/features/files/hooks/use-file-preview";
 import type { FileFilterValue, FileSortKey } from "@/features/files/types/files";
 import { useLocalizedErrorMessage } from "@/i18n/use-localized-error";
 import {
+  bulkArchiveFiles,
+
   deleteFile,
   listFiles,
   renameFile,
@@ -66,6 +68,7 @@ type UseFilesPageResult = {
   bulkDeleteOpen: boolean;
   bulkDeleting: boolean;
   vectorizing: boolean;
+  bulkDownloading: boolean;
   vectorizingFileIDs: string[];
   hasMore: boolean;
   query: string;
@@ -102,6 +105,7 @@ type UseFilesPageResult = {
   onSelectLoadedFiles: () => void;
   onClearFileSelection: () => void;
   onBulkDeleteRequest: () => void;
+  onBulkDownloadRequest: () => Promise<void> | void;
   onClearBulkDelete: () => void;
   onConfirmBulkDelete: () => Promise<void>;
   onVectorizeFile: (fileID: string) => Promise<void>;
@@ -143,6 +147,7 @@ export function useFilesPage(): UseFilesPageResult {
   const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
   const [bulkDeleting, setBulkDeleting] = React.useState(false);
   const [vectorizingFileIDs, setVectorizingFileIDs] = React.useState<string[]>([]);
+  const [bulkDownloading, setBulkDownloading] = React.useState(false);
   const [nextPage, setNextPage] = React.useState(2);
   const [hasMore, setHasMore] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -751,6 +756,29 @@ export function useFilesPage(): UseFilesPageResult {
     await submitVectorization(fileIDs, true);
   }, [selectedFileIDs, submitVectorization]);
 
+  // 批量打包下载选中文件为 ZIP。
+  const onBulkDownloadRequest = React.useCallback(async () => {
+    if (bulkDownloading || selectedFileIDs.length === 0) return;
+    setBulkDownloading(true);
+    try {
+      const token = await resolveAccessToken();
+      if (!token) throw new Error("登录状态已失效");
+      const { blob, fileName } = await bulkArchiveFiles(token, selectedFileIDs);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(t("toasts.downloadZipFailed"), {
+        description: resolveErrorMessage(error, t("toasts.downloadZipFailed")),
+      });
+    } finally {
+      setBulkDownloading(false);
+    }
+  }, [bulkDownloading, selectedFileIDs, t, resolveErrorMessage]);
+
   const onRenameCommit = React.useCallback(
     async (fileID: string, currentFileName: string) => {
       const nextFileName = renameValue.trim();
@@ -932,6 +960,7 @@ export function useFilesPage(): UseFilesPageResult {
     bulkDeleteOpen,
     bulkDeleting,
     vectorizing,
+    bulkDownloading,
     vectorizingFileIDs,
     hasMore,
     query,
@@ -968,6 +997,7 @@ export function useFilesPage(): UseFilesPageResult {
     onSelectLoadedFiles,
     onClearFileSelection,
     onBulkDeleteRequest,
+    onBulkDownloadRequest,
     onClearBulkDelete,
     onConfirmBulkDelete,
     onVectorizeFile,

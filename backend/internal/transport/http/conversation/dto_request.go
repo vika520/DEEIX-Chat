@@ -1,5 +1,10 @@
 package conversation
 
+// BulkArchiveFilesRequest 批量打包下载请求。
+type BulkArchiveFilesRequest struct {
+	FileIDs []string `json:"fileIDs" binding:"required,min=1,max=200,dive,max=128"`
+}
+
 // CreateConversationRequest 创建会话请求。
 type CreateConversationRequest struct {
 	Title        string `json:"title,omitempty" binding:"max=255"`

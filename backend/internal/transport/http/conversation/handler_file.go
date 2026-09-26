@@ -451,6 +451,45 @@ func (h *Handler) DeleteFile(c *gin.Context) {
 // @Failure 404 {object} ErrorDoc
 // @Failure 500 {object} ErrorDoc
 // @Router /files/{file_id}/content [get]
+// BulkArchiveFiles godoc
+// @Summary 批量打包下载文件
+// @Description 将选中的文件打包为 ZIP 返回（最多 200 个、总体积 512MiB）。
+// @Tags files
+// @Accept json
+// @Produce application/zip
+// @Param payload body BulkArchiveFilesRequest true "文件 ID 列表"
+// @Success 200 {file} binary
+// @Failure 400 {object} response.Envelope
+// @Failure 413 {object} response.Envelope
+// @Router /files/archive [post]
+func (h *Handler) BulkArchiveFiles(c *gin.Context) {
+	var req BulkArchiveFilesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.InvalidRequestBody(c, err)
+		return
+	}
+	zipData, filename, err := h.uploads.BulkArchiveFiles(c.Request.Context(), middleware.MustUserID(c), req.FileIDs)
+	if err != nil {
+		switch {
+		case errors.Is(err, appupload.ErrBulkArchiveTooManyFiles):
+			response.Error(c, http.StatusBadRequest, err.Error())
+		case errors.Is(err, appupload.ErrBulkArchiveTooLarge):
+			response.ErrorFrom(c, http.StatusRequestEntityTooLarge, err)
+		case errors.Is(err, appupload.ErrBulkArchiveFileUnavailable):
+			response.Error(c, http.StatusBadRequest, "部分选中文件已不存在，请刷新文件列表后重试")
+		case errors.Is(err, appconversation.ErrFileTooLarge):
+			response.ErrorFrom(c, http.StatusRequestEntityTooLarge, err)
+		case errors.Is(err, appconversation.ErrInvalidFileReference):
+			response.ErrorFrom(c, http.StatusBadRequest, errInvalidFile)
+		default:
+			response.InternalError(c)
+		}
+		return
+	}
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	c.Data(http.StatusOK, "application/zip", zipData)
+}
+
 func (h *Handler) GetFileContent(c *gin.Context) {
 	userID := middleware.MustUserID(c)
 	fileID := c.Param("file_id")
