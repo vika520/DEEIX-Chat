@@ -96,7 +96,8 @@
     "deletePresetConfirm": "Click again to confirm deletion",
     "presetDropdownLabel": "Presets",
     "presetDropdownPlaceholder": "Choose a preset (built-in or saved)…",
-    "systemPresetsHint": "Built-in presets ship with the app and cannot be deleted; custom presets are maintained by the admin. Applying only fills the form; the name is never overwritten."
+    "systemPresetsHint": "Built-in presets ship with the app and cannot be deleted; custom presets are maintained by the admin. Applying only fills the form; the name is never overwritten.",
+    "presetNameReserved": "This name is reserved by a built-in preset; choose another name"
   },
   "select": "Select",
   "selectedCount": "{count} conversations selected",

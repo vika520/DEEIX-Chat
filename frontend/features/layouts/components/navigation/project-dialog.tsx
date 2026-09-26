@@ -43,7 +43,6 @@ import {
   loadProjectPresets,
   newProjectPresetID,
   saveProjectPresets,
-  type BuiltinProjectPreset,
   type ProjectPreset,
 } from "@/shared/model/project-presets";
 import { ModelSelect, type ModelSelectOption } from "@/shared/components/model-select";
@@ -525,7 +524,9 @@ export function ProjectDialog({
         defaultMCPToolNames: b.defaultMCPToolNames,
         defaultSkillTitles: b.defaultSkillTitles,
       })),
-      ...savedPresets.map((preset) => ({ ...preset, builtin: false })),
+      ...savedPresets
+        .filter((preset) => !BUILTIN_PROJECT_PRESETS.some((builtin) => builtin.name === preset.name))
+        .map((preset) => ({ ...preset, builtin: false })),
     ],
     [savedPresets],
   );
@@ -576,6 +577,10 @@ export function ProjectDialog({
     const name = current.name.trim();
     if (!name) {
       toast.error(t("presetSaveNeedsName"));
+      return;
+    }
+    if (BUILTIN_PROJECT_PRESETS.some((preset) => preset.name === name)) {
+      toast.error(t("presetNameReserved"));
       return;
     }
     const token = await resolveAccessToken();

@@ -96,7 +96,8 @@
     "deletePresetConfirm": "再点一次确认删除该预设",
     "presetDropdownLabel": "预设",
     "presetDropdownPlaceholder": "选择预设（内置或已保存）…",
-    "systemPresetsHint": "「内置」为系统固定预设，随应用部署、不可删除；自定义预设由管理员保存维护。套用只填充表单，名称不会被覆盖。"
+    "systemPresetsHint": "「内置」为系统固定预设，随应用部署、不可删除；自定义预设由管理员保存维护。套用只填充表单，名称不会被覆盖。",
+    "presetNameReserved": "该名称由系统内置预设占用，请换一个名称"
   },
   "select": "选择",
   "selectedCount": "{count} 个会话被选中",

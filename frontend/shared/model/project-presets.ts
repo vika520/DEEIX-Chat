@@ -58,39 +58,36 @@ export type BuiltinProjectPreset = {
   defaultSkillTitles: string[];
 };
 
+const ALL_PROJECT_MCP_TOOL_NAMES = [
+  "list_recent_images",
+  "run_image_batch",
+  "wait_image_batch",
+  "list_projects",
+  "list_project_images",
+  "ingest_project_images",
+  "archive_results_to_project",
+  "run_vision_batch",
+  "wait_vision_batch",
+  "get_current_project",
+];
+
 export const BUILTIN_PROJECT_PRESETS: BuiltinProjectPreset[] = [
   {
     id: "builtin_ecom_refactor",
     name: "电商图批量重构",
-    description: "项目图片按参考图文案重新设计排版为 1:1 电商主图（gpt-image-2 服务端批量生成）",
-    systemPrompt: "",
-    defaultModel: "gpt-image-2",
-    defaultMCPToolNames: [
-      "list_projects",
-      "list_project_images",
-      "ingest_project_images",
-      "run_image_batch",
-      "wait_image_batch",
-      "archive_results_to_project",
-    ],
+    description: "根据预设的 skill 对本项目图片进行批量电商主图重构设计。",
+    systemPrompt: "根据预设的skill对本项目的图片进行批量重构设计",
+    defaultModel: "glm-5.3-flash",
+    defaultMCPToolNames: [...ALL_PROJECT_MCP_TOOL_NAMES],
     defaultSkillTitles: ["Ecommerce Image Style Refactor"],
   },
   {
     id: "builtin_ecom_compliance",
     name: "电商图违禁词检查",
-    description: "项目图片视觉逐张读字，比对平台禁用医疗功效词，定向修复（glm-5.3-flash 视觉）",
-    systemPrompt: "",
+    description: "根据预设的 skill 对本项目图片逐张检查医疗功效词并定向修复。",
+    systemPrompt: "根据预设的skill对本项目的图片进行违禁词检查并修改",
     defaultModel: "glm-5.3-flash",
-    defaultMCPToolNames: [
-      "list_projects",
-      "list_project_images",
-      "ingest_project_images",
-      "run_vision_batch",
-      "wait_vision_batch",
-      "run_image_batch",
-      "wait_image_batch",
-      "archive_results_to_project",
-    ],
+    defaultMCPToolNames: [...ALL_PROJECT_MCP_TOOL_NAMES],
     defaultSkillTitles: ["Ecommerce Image Compliance Fix"],
   },
 ];
