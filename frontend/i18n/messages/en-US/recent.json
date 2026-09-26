@@ -92,7 +92,8 @@
     "deleteConversationsLabel": "Also delete all conversations",
     "deleteConversationsDescription": "When selected, conversations in this project are also deleted; otherwise they move to Default.",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "deletePresetConfirm": "Click again to confirm deletion"
   },
   "select": "Select",
   "selectedCount": "{count} conversations selected",

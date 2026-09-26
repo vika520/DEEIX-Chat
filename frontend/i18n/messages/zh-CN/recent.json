@@ -92,7 +92,8 @@
     "deleteConversationsLabel": "同时删除所有会话",
     "deleteConversationsDescription": "勾选后会同时删除项目下的会话；不勾选则移动到默认。",
     "cancel": "取消",
-    "save": "保存"
+    "save": "保存",
+    "deletePresetConfirm": "再点一次确认删除该预设"
   },
   "select": "选择",
   "selectedCount": "{count} 个会话被选中",
