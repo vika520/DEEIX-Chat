@@ -37,7 +37,6 @@ import { getMCPPolicy } from "@/shared/api/settings";
 import { listVisibleSkills } from "@/shared/api/skills";
 import type { SkillSummaryDTO } from "@/shared/api/skills.types";
 import { resolveAccessToken } from "@/shared/auth/resolve-access-token";
-import type { ConversationProjectDTO } from "@/shared/api/conversation.types";
 import {
   loadProjectPresets,
   newProjectPresetID,
@@ -252,14 +251,12 @@ export function ProjectDialog({
   setDraft,
   onOpenChange,
   onSubmit,
-  presetProjects = [],
 }: {
   draft: ProjectDraft | null;
   setDraft: React.Dispatch<React.SetStateAction<ProjectDraft | null>>;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => void | Promise<void>;
   /** 可作为配置预设套用的现有项目列表。 */
-  presetProjects?: ConversationProjectDTO[];
 }) {
   const t = useTranslations("recent.projects");
   const { knowledgeBaseEnabled } = useFeaturePolicy();
@@ -277,7 +274,6 @@ export function ProjectDialog({
   const nameInputID = React.useId();
   const systemPromptInputID = React.useId();
   const defaultModelInputID = React.useId();
-  const presetInputID = React.useId();
   const dialogContentRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -579,37 +575,6 @@ export function ProjectDialog({
     }
   }, [savedPresets, selectedSavedPresetID, t]);
 
-  // 预设来源：现有项目（编辑模式下排除自身，避免自套）。
-  const presetOptions = React.useMemo(
-    () => presetProjects.filter((item) => item.publicID !== stableDraft?.publicID),
-    [presetProjects, stableDraft?.publicID],
-  );
-
-  const applyPreset = React.useCallback(
-    (publicID: string) => {
-      const preset = presetProjects.find((item) => item.publicID === publicID);
-      if (!preset) {
-        return;
-      }
-      setDraft((current) => {
-        if (!current) {
-          return current;
-        }
-        return {
-          ...current,
-          // 名称不套用：新建时留空强制起名，编辑时保留现名。
-          name: current.publicID ? current.name : "",
-          systemPrompt: preset.systemPrompt ?? "",
-          defaultModel: preset.defaultModel ?? "",
-          mcpDefaultMode: preset.mcpDefaultMode === "custom" ? "custom" : "inherit",
-          defaultMCPToolIDs: (preset.defaultMCPToolIDs ?? []).slice(),
-          defaultSkillIDs: (preset.defaultSkillIDs ?? []).slice(),
-          defaultKnowledgeBaseIDs: (preset.defaultKnowledgeBaseIDs ?? []).slice(),
-        };
-      });
-    },
-    [presetProjects, setDraft],
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -666,32 +631,6 @@ export function ProjectDialog({
               </div>
               <p className="text-[11px] leading-relaxed text-muted-foreground">{t("myPresetsHint")}</p>
             </div>
-            {presetOptions.length > 0 ? (
-              <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">{t("presetLabel")}</span>
-                <Select
-                  value=""
-                  onValueChange={(value) => {
-                    if (value) {
-                      applyPreset(value);
-                    }
-                  }}
-                  disabled={submitting}
-                >
-                  <SelectTrigger id={presetInputID} className="h-8 w-full">
-                    <SelectValue placeholder={t("presetPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {presetOptions.map((item) => (
-                      <SelectItem key={item.publicID} value={item.publicID}>
-                        {item.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">{t("presetHint")}</p>
-              </div>
-            ) : null}
             <div className="space-y-1">
               <label htmlFor={nameInputID} className="text-xs text-muted-foreground">
                 {t("nameLabel")}

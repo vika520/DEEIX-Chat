@@ -977,7 +977,6 @@ export function NavProjects() {
         setDraft={setDraft}
         onOpenChange={(open) => !open && closeDraft()}
         onSubmit={commitDraft}
-        presetProjects={projects}
       />
 
       <AlertDialog
